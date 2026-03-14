@@ -123,6 +123,7 @@ export default function Dashboard() {
   const [otEventDetail, setOtEventDetail] = useState(null)
   const [savingEvent, setSavingEvent] = useState(false)
   const [excludedNames, setExcludedNames] = useState(new Set())
+  const [selectedWeek, setSelectedWeek] = useState(null)
 
   useEffect(() => { loadData() }, [])
   async function loadData() {
@@ -289,6 +290,24 @@ export default function Dashboard() {
     hours.forEach(h => { const we = h.week_ending; if (!map[we]) map[we] = { week_ending: we, emps: new Set(), hours: 0, st: 0, ot: 0, dt: 0, days: new Set() }; map[we].emps.add(h.employee_name); map[we].hours += parseFloat(h.total_hours || 0); map[we].st += parseFloat(h.straight_time || 0); map[we].ot += parseFloat(h.overtime_1_5x || 0); map[we].dt += parseFloat(h.double_time_2x || 0); map[we].days.add(h.work_date) })
     return Object.values(map).map(w => ({ ...w, crew: w.emps.size, workDays: w.days.size })).sort((a, b) => b.week_ending.localeCompare(a.week_ending))
   }, [hours])
+
+  const weekDetail = useMemo(() => {
+    if (!selectedWeek) return null
+    const wh = hours.filter(h => h.week_ending === selectedWeek)
+    const dayMap = {}
+    wh.forEach(h => {
+      if (!dayMap[h.work_date]) dayMap[h.work_date] = []
+      const emp = employees.find(e => e.name === h.employee_name)
+      dayMap[h.work_date].push({ name: h.employee_name, trade: emp?.trade, specialty: emp?.specialty, st: parseFloat(h.straight_time || 0), ot: parseFloat(h.overtime_1_5x || 0), dt: parseFloat(h.double_time_2x || 0), total: parseFloat(h.total_hours || 0) })
+    })
+    return Object.entries(dayMap).sort(([a], [b]) => a.localeCompare(b)).map(([date, crew]) => {
+      const d = new Date(date + 'T12:00:00')
+      const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]
+      crew.sort((a, b) => a.name.localeCompare(b.name))
+      const totH = crew.reduce((s, c) => s + c.total, 0)
+      return { date, dayName, crew, totalHours: totH }
+    })
+  }, [selectedWeek, hours, employees])
 
   const senData = useMemo(() => {
     const ed = {}; hours.forEach(h => { if (!ed[h.employee_name]) ed[h.employee_name] = new Set(); ed[h.employee_name].add(h.work_date) })
@@ -481,10 +500,37 @@ export default function Dashboard() {
     </div>}
 
     {/* ══════ WEEKLY ══════ */}
-    {activeTab === 'weekly' && <div className="card"><div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Weekly Summary</div>
+    {activeTab === 'weekly' && <>
+      <div className="card"><div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Weekly Summary<span style={{ color: 'var(--dim)', fontSize: 11, fontWeight: 400, marginLeft: 8 }}>Click a week to see daily crew breakdown</span></div>
       <div className="scroll-table"><table><thead><tr><th>Week Ending</th><th className="right">Crew</th><th className="right">Days</th><th className="right">ST</th><th className="right">OT 1.5x</th><th className="right">DT 2x</th><th className="right">Total Hrs</th><th>Distribution</th></tr></thead><tbody>
-        {weeklyData.map(w => { const sP = w.hours > 0 ? (w.st / w.hours) * 100 : 0; const oP = w.hours > 0 ? (w.ot / w.hours) * 100 : 0; const dP = w.hours > 0 ? (w.dt / w.hours) * 100 : 0; return <tr key={w.week_ending}><td style={{ fontWeight: 600 }}>{w.week_ending}</td><td className="right">{w.crew}</td><td className="right" style={{ color: 'var(--dim)' }}>{w.workDays}</td><td className="right" style={{ color: 'var(--green)' }}>{w.st.toFixed(1)}</td><td className="right" style={{ color: 'var(--amber)' }}>{w.ot > 0 ? w.ot.toFixed(1) : '\u2014'}</td><td className="right" style={{ color: 'var(--red)' }}>{w.dt > 0 ? w.dt.toFixed(1) : '\u2014'}</td><td className="right" style={{ fontWeight: 600 }}>{w.hours.toFixed(1)}</td><td style={{ width: 140 }}><div className="dist-bar"><div style={{ width: `${sP}%`, background: 'var(--green)' }} /><div style={{ width: `${oP}%`, background: 'var(--amber)' }} /><div style={{ width: `${dP}%`, background: 'var(--red)' }} /></div></td></tr> })}
-      </tbody></table></div></div>}
+        {weeklyData.map(w => { const sP = w.hours > 0 ? (w.st / w.hours) * 100 : 0; const oP = w.hours > 0 ? (w.ot / w.hours) * 100 : 0; const dP = w.hours > 0 ? (w.dt / w.hours) * 100 : 0; const sel = selectedWeek === w.week_ending; return <tr key={w.week_ending} onClick={() => setSelectedWeek(sel ? null : w.week_ending)} style={{ cursor: 'pointer', background: sel ? 'var(--surface-alt)' : undefined }}><td style={{ fontWeight: 600, color: sel ? 'var(--accent)' : undefined }}>{sel ? '\u25BC ' : '\u25B6 '}{w.week_ending}</td><td className="right">{w.crew}</td><td className="right" style={{ color: 'var(--dim)' }}>{w.workDays}</td><td className="right" style={{ color: 'var(--green)' }}>{w.st.toFixed(1)}</td><td className="right" style={{ color: 'var(--amber)' }}>{w.ot > 0 ? w.ot.toFixed(1) : '\u2014'}</td><td className="right" style={{ color: 'var(--red)' }}>{w.dt > 0 ? w.dt.toFixed(1) : '\u2014'}</td><td className="right" style={{ fontWeight: 600 }}>{w.hours.toFixed(1)}</td><td style={{ width: 140 }}><div className="dist-bar"><div style={{ width: `${sP}%`, background: 'var(--green)' }} /><div style={{ width: `${oP}%`, background: 'var(--amber)' }} /><div style={{ width: `${dP}%`, background: 'var(--red)' }} /></div></td></tr> })}
+      </tbody></table></div></div>
+      {selectedWeek && weekDetail && <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div><span style={{ fontWeight: 600, fontSize: 14 }}>Crew Breakdown</span><span style={{ color: 'var(--dim)', fontSize: 11, marginLeft: 8 }}>Week ending {selectedWeek}</span></div>
+          <button className="btn" style={{ background: 'var(--border)', color: 'var(--dim)', fontSize: 11, padding: '4px 10px' }} onClick={() => setSelectedWeek(null)}>&times; Close</button>
+        </div>
+        <div className="day-grid">
+          {weekDetail.map(day => <div key={day.date} className="day-card">
+            <div className="day-header">
+              <span className="day-name">{day.dayName}</span>
+              <span className="day-date">{day.date}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 11 }}><strong>{day.crew.length}</strong> <span style={{ color: 'var(--dim)' }}>workers</span> &middot; <strong>{day.totalHours.toFixed(1)}</strong> <span style={{ color: 'var(--dim)' }}>hrs</span></span>
+            </div>
+            <div className="scroll-table" style={{ maxHeight: 300 }}><table><thead><tr><th>Employee</th><th>Trade</th><th className="right">ST</th><th className="right">OT</th><th className="right">DT</th><th className="right">Total</th></tr></thead><tbody>
+              {day.crew.map(c => <tr key={c.name}>
+                <td><a className="clickable-name" onClick={() => openEdit(c.name)} style={{ cursor: 'pointer', color: 'var(--accent)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>{c.name}</a>{c.specialty && <SpecBadge specialty={c.specialty} />}</td>
+                <td>{c.trade && <TradeBadge trade={c.trade} />}</td>
+                <td className="right" style={{ color: 'var(--green)' }}>{c.st.toFixed(1)}</td>
+                <td className="right" style={{ color: 'var(--amber)' }}>{c.ot > 0 ? c.ot.toFixed(1) : '\u2014'}</td>
+                <td className="right" style={{ color: 'var(--red)' }}>{c.dt > 0 ? c.dt.toFixed(1) : '\u2014'}</td>
+                <td className="right" style={{ fontWeight: 600 }}>{c.total.toFixed(1)}</td>
+              </tr>)}
+            </tbody></table></div>
+          </div>)}
+        </div>
+      </div>}
+    </>}
 
     {/* ══════ SENIORITY ══════ */}
     {activeTab === 'seniority' && <div className="card">
