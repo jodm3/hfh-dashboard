@@ -348,7 +348,7 @@ export default function Dashboard() {
 
   return (<div>
     {editEmp && <EditModal employee={editEmp} otAdj={otAdjustments[editEmp.name] || 0} onClose={() => setEditEmp(null)} onSave={handleSave} />}
-    <div className="header"><div><h1>HFH South Campus</h1><div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}><span className="badge" style={{ background: 'var(--green-dim)', color: 'var(--green)' }}>Live</span><span style={{ fontSize: 11, color: 'var(--dim)' }}>Pipefitters 636 &middot; {employees.length} employees &middot; {hours.length.toLocaleString()} records</span></div></div></div>
+    <div className="header"><div><h1>HFH South Campus</h1><div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}><span className="badge" style={{ background: 'var(--green-dim)', color: 'var(--green)' }}>Live</span><span style={{ fontSize: 11, color: 'var(--dim)' }}>Pipefitters 636 &middot; {employees.length} employees &middot; {hours.length.toLocaleString()} records</span></div></div><a href="/upload" className="btn" style={{ background: 'var(--accent)', textDecoration: 'none', alignSelf: 'center' }}>{'\u2B06'} Upload Payroll</a></div>
     <div className="tabs">{tabs.map(t => <div key={t} className={`tab ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
       {t === 'dashboard' ? 'Dashboard' : t === 'overtime' ? 'Overtime' : t === 'ot_history' ? 'OT History' : t === 'weekly' ? 'Weekly' : 'Seniority'}
     </div>)}</div>
